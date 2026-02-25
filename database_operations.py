@@ -174,3 +174,55 @@ def insert_cme_copper_price(cursor, connection, copper_data):
         connection.rollback()
         print(f"Error inserting CME copper data for {copper_data['globex_code']}: {e}")
         raise
+
+def insert_insider_transaction(cursor, connection, transaction_data):
+    """Insert insider transaction data into the database"""
+    try:
+        # First, delete any existing records for the same ticker and transaction date
+        delete_query = """
+        DELETE FROM api_app_insidertransactions 
+        WHERE ticker = %s AND transaction_date = %s AND insider_name = %s;
+        """
+        cursor.execute(delete_query, (
+            transaction_data['ticker'],
+            transaction_data['transaction_date'],
+            transaction_data['insider_name']
+        ))
+
+        # SQL query to insert data into the insider transactions table
+        insert_query = """
+        INSERT INTO api_app_insidertransactions (
+            id, transaction_date, ticker, company_name, insider_name, title, 
+            trade_type, price, qty, owned, value, country, created_at, updated_at
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+        """
+
+        # Data to be inserted
+        insider_data = (
+            str(uuid.uuid4()),  # id (UUID)
+            transaction_data['transaction_date'],
+            transaction_data['ticker'],
+            transaction_data['company_name'],
+            transaction_data['insider_name'],
+            transaction_data['title'],
+            transaction_data['trade_type'],
+            transaction_data['price'],
+            transaction_data['qty'],
+            transaction_data['owned'],
+            transaction_data['value'],
+            transaction_data['country'],
+            datetime.now(),  # created_at
+            datetime.now()   # updated_at
+        )
+
+        # Execute the SQL query with the data
+        cursor.execute(insert_query, insider_data)
+        
+        # Commit the transaction
+        connection.commit()
+
+    except Exception as e:
+        # Rollback the transaction in case of an error
+        connection.rollback()
+        logging.error(f"Error inserting insider transaction for {transaction_data['ticker']}: {e}")
+        raise

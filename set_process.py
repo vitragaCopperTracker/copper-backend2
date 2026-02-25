@@ -10,11 +10,11 @@ from database_operations import update_process_status
 def main():
     try:
         # Ask for process number
-        process_num = input("Enter process number (1-5): ").strip()
+        process_num = input("Enter process number (1-4): ").strip()
         
         # Validate input
-        if process_num not in ['1', '2', '3', '4', '5']:
-            print("Invalid input. Please enter 1, 2, 3, 4, or 5")
+        if process_num not in ['1', '2', '3', '4']:
+            print("Invalid input. Please enter 1, 2, 3, or 4")
             return
         
         # Update process
