@@ -51,7 +51,6 @@ jobs:
           DISPLAY: ":99"
           CHROME_BIN: "/usr/bin/chromium-browser"
           CHROMEDRIVER_PATH: "/usr/bin/chromedriver"
-          server_config: "True"
           DB_HOST: ${{ secrets.DB_HOST }}
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
