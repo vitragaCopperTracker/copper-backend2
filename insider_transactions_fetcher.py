@@ -128,10 +128,10 @@ def get_us_insider_data(ticker, company_name):
                         'insider_name': cols[4].text.strip(),
                         'title': shorten_title(cols[5].text.strip()),
                         'trade_type': trade_type,
-                        'price': clean_numeric(cols[7].text.strip()),
-                        'qty': clean_numeric(cols[8].text.strip()),
-                        'owned': clean_numeric(cols[9].text.strip()),
-                        'value': clean_numeric(cols[11].text.strip()),
+                        'price': cleanData(cols[7].text.strip()),
+                        'qty': cleanData(cols[8].text.strip()),
+                        'owned': cleanData(cols[9].text.strip()),
+                        'value': cleanData(cols[11].text.strip()),
                         'country': 'US'
                     })
             
@@ -245,10 +245,10 @@ def get_canadian_insider_data(ticker, company_name):
                 'insider_name': insider_name,
                 'title': shorten_title(title) if title else "Other",
                 'trade_type': standardize_trade_type(trade_type, price) if trade_type else "Other",
-                'price': clean_numeric(price_str),
-                'qty': clean_numeric(qty_str),
-                'owned': clean_numeric(f"{owned}"),
-                'value': clean_numeric(value_str),
+                'price': cleanData(price_str),
+                'qty': cleanData(qty_str),
+                'owned': cleanData(f"{owned}"),
+                'value': cleanData(value_str),
                 'country': 'Canada'
             })
         
