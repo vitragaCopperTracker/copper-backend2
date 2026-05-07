@@ -16,30 +16,32 @@ import time
 from datetime import datetime
 from database_config import get_curser
 from database_operations import insert_cme_copper_price
-
+from selenium.webdriver.chrome.service import Service
 def setup_chrome_driver():
-    """Setup Chrome WebDriver with appropriate options"""
     chrome_options = Options()
-    chrome_options.add_argument("--headless")
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-    
-    # For Docker environment
     chrome_options.add_argument("--remote-debugging-port=9222")
     chrome_options.add_argument("--disable-extensions")
     chrome_options.add_argument("--disable-plugins")
     chrome_options.add_argument("--disable-images")
-    
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
+    chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    chrome_options.add_experimental_option("useAutomationExtension", False)
+
     try:
-        driver = webdriver.Chrome(options=chrome_options)
+        service = Service()
+        driver = webdriver.Chrome(service=service, options=chrome_options)  # service passed here
         return driver
     except Exception as e:
         logging.error(f"❌ Failed to setup Chrome driver: {e}")
         return None
-
+    
+    
 def scrape_cme_copper_price_selenium():
     """Scrape copper price data from CME Group website using Selenium"""
     url = "https://www.cmegroup.com/markets/metals/base/copper.quotes.html"
