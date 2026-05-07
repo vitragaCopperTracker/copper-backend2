@@ -121,7 +121,7 @@ def get_us_insider_data(ticker, company_name):
                     elif "sale" in trade_type.lower():
                         trade_type = "Sale"
                     
-                   all_data.append({
+                    all_data.append({
                         'transaction_date': cols[2].text.strip(),
                         'ticker': ticker,
                         'company_name': company_name,
