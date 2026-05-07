@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """
 CME Group Copper Spot Price Scraper with Selenium
-Scrapes real-time copper futures data from CME Group website using Selenium WebDriver
 """
 
 from selenium import webdriver
@@ -9,14 +8,17 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 import logging
 import re
 import time
+import os
 from datetime import datetime
 from database_config import get_curser
 from database_operations import insert_cme_copper_price
-from selenium.webdriver.chrome.service import Service
+
+
 def setup_chrome_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless=new")
@@ -33,17 +35,21 @@ def setup_chrome_driver():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option("useAutomationExtension", False)
 
+    chrome_bin = os.environ.get("CHROME_BIN", "/usr/bin/chromium-browser")
+    chromedriver_path = os.environ.get("CHROMEDRIVER_PATH", "/usr/bin/chromedriver")
+
+    chrome_options.binary_location = chrome_bin
+    service = Service(chromedriver_path)
+
     try:
-        service = Service()
-        driver = webdriver.Chrome(service=service, options=chrome_options)  # service passed here
+        driver = webdriver.Chrome(service=service, options=chrome_options)
         return driver
     except Exception as e:
         logging.error(f"❌ Failed to setup Chrome driver: {e}")
         return None
-    
-    
+
+
 def scrape_cme_copper_price_selenium():
-    """Scrape copper price data from CME Group website using Selenium"""
     url = "https://www.cmegroup.com/markets/metals/base/copper.quotes.html"
     driver = None
     
@@ -53,34 +59,27 @@ def scrape_cme_copper_price_selenium():
         if not driver:
             return None
         
-        logging.info(f"🌐 Navigating to CME Group copper page...")
+        logging.info("🌐 Navigating to CME Group copper page...")
         driver.get(url)
         
-        # Wait for page to load with longer timeout
         wait = WebDriverWait(driver, 30)
         
-        # Wait for the main content to load - try multiple strategies
         try:
-            # Strategy 1: Wait for datarow
             wait.until(EC.presence_of_element_located((By.CLASS_NAME, "datarow")))
             logging.info("✅ Page loaded successfully - datarow found")
         except TimeoutException:
             try:
-                # Strategy 2: Wait for any price element
                 wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, ".last-value, .price, [class*='price']")))
                 logging.info("✅ Page loaded successfully - price element found")
             except TimeoutException:
                 logging.error("❌ Timeout waiting for page elements to load")
                 return None
         
-        # Add more wait time for JavaScript to load
         logging.info("⏳ Waiting for JavaScript to load...")
         time.sleep(5)
         
-        # Try multiple strategies to find the data
         copper_data = None
         
-        # Strategy 1: Look for datarow class with more specific selectors
         try:
             data_rows = driver.find_elements(By.CSS_SELECTOR, "div.datarow, .datarow, [class*='datarow']")
             if data_rows:
@@ -95,10 +94,8 @@ def scrape_cme_copper_price_selenium():
         except Exception as e:
             logging.error(f"❌ Error in datarow strategy: {e}")
         
-        # Strategy 2: Look for specific price elements with broader selectors
         if not copper_data:
             try:
-                # Try different combinations of selectors
                 selectors_to_try = [
                     (".last-value", ".change-value", ".volume-value", ".globex"),
                     ("[class*='last']", "[class*='change']", "[class*='volume']", "[class*='globex']"),
@@ -126,21 +123,16 @@ def scrape_cme_copper_price_selenium():
             except Exception as e:
                 logging.error(f"❌ Error in element strategy: {e}")
         
-        # Strategy 3: Parse page text for price patterns (more sophisticated)
         if not copper_data:
             try:
                 page_text = driver.page_source
                 logging.info("🔍 Analyzing page source for copper price patterns...")
                 
-                # Look for copper-specific patterns in the HTML
-                import re
-                
-                # Look for price patterns with context
                 price_patterns = [
-                    r'copper.*?(\d+\.\d{2,4})',  # "copper" followed by price
-                    r'HG[A-Z]\d.*?(\d+\.\d{2,4})',  # Globex code followed by price
-                    r'last.*?(\d+\.\d{2,4})',  # "last" followed by price
-                    r'(\d+\.\d{4})',  # Any 4-decimal price
+                    r'copper.*?(\d+\.\d{2,4})',
+                    r'HG[A-Z]\d.*?(\d+\.\d{2,4})',
+                    r'last.*?(\d+\.\d{2,4})',
+                    r'(\d+\.\d{4})',
                 ]
                 
                 for pattern in price_patterns:
@@ -149,7 +141,7 @@ def scrape_cme_copper_price_selenium():
                         for price_str in matches:
                             try:
                                 price = float(price_str)
-                                if 3.0 <= price <= 15.0:  # Reasonable copper price range
+                                if 3.0 <= price <= 15.0:
                                     copper_data = {
                                         'globex_code': 'HG_SCRAPED',
                                         'last_price': price,
@@ -170,7 +162,6 @@ def scrape_cme_copper_price_selenium():
             except Exception as e:
                 logging.error(f"❌ Error in text parsing strategy: {e}")
         
-        # Strategy 4: If no real data found, return None (no mock data)
         if not copper_data:
             logging.error("❌ Could not scrape real data from CME website")
             return None
@@ -179,7 +170,6 @@ def scrape_cme_copper_price_selenium():
         
     except Exception as e:
         logging.error(f"❌ Error in Selenium scraper: {e}")
-        # Return None instead of mock data
         return None
     
     finally:
@@ -187,25 +177,21 @@ def scrape_cme_copper_price_selenium():
             driver.quit()
             logging.info("✅ WebDriver closed")
 
+
 def extract_data_from_row(data_row):
-    """Extract copper data from a data row element"""
     try:
-        # Extract Globex Code
         try:
             globex_element = data_row.find_element(By.CSS_SELECTOR, "span.globex")
             globex_code = globex_element.text.strip()
         except NoSuchElementException:
             globex_code = "HG_UNKNOWN"
         
-        # Extract Last Price
         last_element = data_row.find_element(By.CSS_SELECTOR, "div.last-value")
         last_price = float(last_element.text.strip())
         
-        # Extract Change and Percentage
         change_element = data_row.find_element(By.CSS_SELECTOR, "div.change-value")
         change_text = change_element.text.strip()
         
-        # Parse change text like "-0.2220 (-3.65%)"
         change_match = re.match(r'([+-]?\d+\.?\d*)\s*\(([+-]?\d+\.?\d*)%\)', change_text)
         if change_match:
             price_change = float(change_match.group(1))
@@ -214,7 +200,6 @@ def extract_data_from_row(data_row):
             price_change = 0.0
             price_change_percent = 0.0
         
-        # Extract Volume
         try:
             volume_element = data_row.find_element(By.CSS_SELECTOR, "div.volume-value")
             volume_text = volume_element.text.strip().replace(',', '')
@@ -222,7 +207,6 @@ def extract_data_from_row(data_row):
         except (NoSuchElementException, ValueError):
             volume = 0
         
-        # Determine if price is decreasing
         is_decrease = 'decrease' in change_element.get_attribute('class')
         
         return {
@@ -240,14 +224,12 @@ def extract_data_from_row(data_row):
         logging.error(f"❌ Error extracting data from row: {e}")
         return None
 
+
 def extract_data_from_elements(last_value, change_value, volume_value, globex_value):
-    """Extract copper data from individual elements"""
     try:
-        # Extract values
         last_price = float(last_value.text.strip())
         globex_code = globex_value.text.strip()
         
-        # Parse change
         change_text = change_value.text.strip()
         change_match = re.match(r'([+-]?\d+\.?\d*)\s*\(([+-]?\d+\.?\d*)%\)', change_text)
         if change_match:
@@ -257,11 +239,9 @@ def extract_data_from_elements(last_value, change_value, volume_value, globex_va
             price_change = 0.0
             price_change_percent = 0.0
         
-        # Parse volume
         volume_text = volume_value.text.strip().replace(',', '')
         volume = int(volume_text) if volume_text.isdigit() else 0
         
-        # Check if decreasing
         is_decrease = 'decrease' in change_value.get_attribute('class')
         
         return {
@@ -279,18 +259,16 @@ def extract_data_from_elements(last_value, change_value, volume_value, globex_va
         logging.error(f"❌ Error extracting data from elements: {e}")
         return None
 
+
 def extract_data_from_text(page_text):
-    """Extract copper data from page text using regex"""
     try:
-        # Look for price patterns in the text
         price_pattern = r'(\d+\.\d{4})'
         prices = re.findall(price_pattern, page_text)
         
         if prices:
-            # Use the first reasonable price found
             for price_str in prices:
                 price = float(price_str)
-                if 3.0 <= price <= 10.0:  # Reasonable copper price range
+                if 3.0 <= price <= 10.0:
                     return {
                         'globex_code': 'HG_TEXT',
                         'last_price': price,
@@ -308,16 +286,14 @@ def extract_data_from_text(page_text):
         logging.error(f"❌ Error extracting data from text: {e}")
         return None
 
+
 def main():
-    """Main function to scrape and store CME copper data using Selenium"""
     logging.info("🚀 Starting CME Copper Selenium Scraper")
     
     try:
-        # Get database connection
         connection, cursor = get_curser()
         logging.info("✅ Connected to database")
         
-        # Scrape copper data
         copper_data = scrape_cme_copper_price_selenium()
         
         if not copper_data:
@@ -325,10 +301,8 @@ def main():
             logging.error("❌ Skipping database insertion - only real data allowed")
             return
         
-        # Insert data into database
         insert_cme_copper_price(cursor, connection, copper_data)
         logging.info("✅ CME copper data inserted into database")
-        
         logging.info(f"🎉 CME Selenium scraping completed: ${copper_data['last_price']} ({copper_data['price_change']:+.4f}, {copper_data['price_change_percent']:+.2f}%)")
         
     except Exception as e:
@@ -342,13 +316,11 @@ def main():
             connection.close()
         logging.info("✅ Database connection closed")
 
+
 if __name__ == "__main__":
-    # Set up logging
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler()
-        ]
+        handlers=[logging.StreamHandler()]
     )
     main()
