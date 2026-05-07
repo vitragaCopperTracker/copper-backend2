@@ -15,6 +15,17 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from database_config import get_curser
 from database_operations import insert_insider_transaction
 
+
+def cleanData(value):
+    """Remove $, commas and convert to float"""
+    if value is None:
+        return None
+    try:
+        return float(str(value).replace('$', '').replace(',', '').strip())
+    except:
+        return None 
+
+
 def standardize_trade_type(trade_type, price=None):
     """Standardize trade type based on text and optionally price"""
     if not trade_type:
@@ -110,17 +121,17 @@ def get_us_insider_data(ticker, company_name):
                     elif "sale" in trade_type.lower():
                         trade_type = "Sale"
                     
-                    all_data.append({
+                   all_data.append({
                         'transaction_date': cols[2].text.strip(),
                         'ticker': ticker,
                         'company_name': company_name,
                         'insider_name': cols[4].text.strip(),
                         'title': shorten_title(cols[5].text.strip()),
                         'trade_type': trade_type,
-                        'price': cols[7].text.strip(),
-                        'qty': cols[8].text.strip(),
-                        'owned': cols[9].text.strip(),
-                        'value': cols[11].text.strip(),
+                        'price': clean_numeric(cols[7].text.strip()),
+                        'qty': clean_numeric(cols[8].text.strip()),
+                        'owned': clean_numeric(cols[9].text.strip()),
+                        'value': clean_numeric(cols[11].text.strip()),
                         'country': 'US'
                     })
             
@@ -233,11 +244,11 @@ def get_canadian_insider_data(ticker, company_name):
                 'ticker': ticker,
                 'insider_name': insider_name,
                 'title': shorten_title(title) if title else "Other",
-                'trade_type': standardize_trade_type(trade_type, price_str) if trade_type else "Other",
-                'price': price_str,
-                'qty': qty_str,
-                'owned': f"{owned:,}" if owned else "0",
-                'value': value_str,
+                'trade_type': standardize_trade_type(trade_type, price) if trade_type else "Other",
+                'price': clean_numeric(price_str),
+                'qty': clean_numeric(qty_str),
+                'owned': clean_numeric(f"{owned}"),
+                'value': clean_numeric(value_str),
                 'country': 'Canada'
             })
         

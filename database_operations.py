@@ -2,6 +2,7 @@ import uuid
 import logging
 from datetime import datetime
 
+
 def insert_most_followed_stock(cursor, connection, name, ticker, open_price, close_price, intraday_percentage, current_price, intraday_change, seven_day_change, seven_day_percentage, volume, country, stock_exchange, stock_type):
     """
     Inserts a single record into the most_followed_stocks table in PostgreSQL 
